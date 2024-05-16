@@ -37,4 +37,8 @@ public class Deck {
         }
         shuffle();  // Перемешиваем новую колоду
     }
+    
+    public Card dealCard() {
+        return drawCard();
+    }
 }

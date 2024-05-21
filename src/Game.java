@@ -1,6 +1,8 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.*;
+import java.util.List;
 
 import com.poker.cards.Deck;
 import com.poker.cards.Card;
@@ -16,6 +18,10 @@ public class Game {
 
     private int initialChips = 0; // Начальное количество фишек у игроков
 
+    private JPanel topPanel; // Добавляем поле topPanel
+
+    private JLabel[] communityCardLabels; // Метки для общих карт
+
     public Game() {
         frame = new JFrame("PokerGame"); // Создаем только один `JFrame`
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -28,23 +34,21 @@ public class Game {
         table = new Table(); // Инициализация игрового стола
 
         // Загрузка фона для начального экрана
-        Image originalImageStart = new ImageIcon("poker_1.jpg").getImage();
-        Image scaledImageStart = originalImageStart.getScaledInstance(1400, 900, Image.SCALE_SMOOTH); // Уменьшаем размер изображения
-        backgroundStart = new ImageIcon(scaledImageStart);
-
+        backgroundStart = loadImage("poker_1.jpg", 1400, 900);
         // Загрузка фона для экрана с правилами
-        Image originalImageRules = new ImageIcon("rules_background.jpg").getImage();
-        Image scaledImageRules = originalImageRules.getScaledInstance(1400, 900, Image.SCALE_SMOOTH); // Уменьшаем размер изображения
-        backgroundRules = new ImageIcon(scaledImageRules);
-
+        backgroundRules = loadImage("rules_background.jpg", 1400, 900);
         // Загрузка фона для экрана с комбинациями
-        Image originalImageCombinations = new ImageIcon("combinations_background.jpg").getImage();
-        Image scaledImageCombinations = originalImageCombinations.getScaledInstance(1400, 900, Image.SCALE_SMOOTH); // Уменьшаем размер изображения
-        backgroundCombinations = new ImageIcon(scaledImageCombinations);
+        backgroundCombinations = loadImage("combinations_background.jpg", 1400, 900);
 
         showStartScreen(); // Показываем начальный экран
 
         frame.setVisible(true); // Окно должно быть видимым
+    }
+
+    private ImageIcon loadImage(String path, int width, int height) {
+        Image originalImage = new ImageIcon(path).getImage();
+        Image scaledImage = originalImage.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+        return new ImageIcon(scaledImage);
     }
 
     private void showStartScreen() {
@@ -88,16 +92,19 @@ public class Game {
     }
 
     private void askInitialChips() {
-        String input = JOptionPane.showInputDialog(frame, "Enter the initial number of chips for each player:", "Initial number of chips", JOptionPane.PLAIN_MESSAGE);
-        try {
-            initialChips = Integer.parseInt(input);
-            if (initialChips < 500) {
-                JOptionPane.showMessageDialog(frame, "The starting number of chips must be a positive number greater than or equal to 500.", "Error", JOptionPane.ERROR_MESSAGE);
-            } else {
-                startGame(); // We start the game after entering the number of chips
+        while (true) {
+            String input = JOptionPane.showInputDialog(frame, "Enter the initial number of chips for each player:", "Initial number of chips", JOptionPane.PLAIN_MESSAGE);
+            try {
+                initialChips = Integer.parseInt(input);
+                if (initialChips < 500) {
+                    JOptionPane.showMessageDialog(frame, "The starting number of chips must be a positive number greater than or equal to 500.", "Error", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    startGame(); // We start the game after entering the number of chips
+                    break;
+                }
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(frame, "Invalid input. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
             }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(frame, "Invalid input. Please enter a number.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -126,7 +133,7 @@ public class Game {
     }
 
     public void startGame() {
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        topPanel = new JPanel(new FlowLayout(FlowLayout.CENTER)); // Инициализация topPanel
 
         JButton backButton = new JButton("Back");
         backButton.addActionListener(e -> {
@@ -140,18 +147,48 @@ public class Game {
 
         frame.add(topPanel, BorderLayout.NORTH);
 
-        setPanel(table.getTablePanel());
-
-        if (table != null) {
+        JPanel tablePanel = table.getTablePanel();
+        JButton startButton = new JButton("Start Game");
+        startButton.addActionListener(e -> {
             dealCardsToPlayers(); // Раздать карты игрокам
             dealCommunityCards(); // Раздать карты общего поля
 
             // Отобразить карты на экране
             table.displayPlayerCards();
-            table.displayCommunityCards();
+            displayCommunityCards();
 
             table.startGame();
+
+            tablePanel.remove(startButton); // Удалить кнопку после начала игры
+            tablePanel.revalidate();
+            tablePanel.repaint();
+        });
+
+        tablePanel.add(startButton, BorderLayout.SOUTH);
+
+        setPanel(tablePanel);
+    }
+
+    private void displayCommunityCards() {
+        JPanel communityPanel = new JPanel(new FlowLayout());
+        communityCardLabels = new JLabel[5]; // Инициализация массива меток для карт
+
+        for (int i = 0; i < communityCardLabels.length; i++) {
+            communityCardLabels[i] = new JLabel();
+            communityPanel.add(communityCardLabels[i]);
         }
+
+        frame.add(communityPanel, BorderLayout.CENTER);
+
+        // Показать первые три карты
+        for (int i = 0; i < 3; i++) {
+            Card card = ((List<Card>) table.getCommunityCards()).get(i);
+            ImageIcon cardImage = loadImage(card.getImagePath(), 100, 150); // Путь к изображению карты и ее размер
+            communityCardLabels[i].setIcon(cardImage);
+        }
+
+        frame.revalidate();
+        frame.repaint();
     }
 
     private void showSettingsScreen() {
@@ -176,6 +213,7 @@ public class Game {
                 + "The player's goal is to either defeat his opponents when revealing personal cards after 5 community cards have been laid out, or to have all other players fold their cards at any stage."
                 + " When opening cards, the player who has the best combination of 5 cards out of 7 cards (2 personal and 5 public) wins."
                 + " It does not matter how many personal cards are used to collect a combination."
+
                 + "\n2. Depending on the situation (bet of previous players, position at the table), "
                 + "the following actions are possible:\n"
                 + "Concepts of positions at the poker table\n"
@@ -186,38 +224,40 @@ public class Game {
                 + "Reraise – raising the raise, i.e. response to a raise.\n"
                 + "All-in is a bet on all the chips in the stack.\n"
                 + "Fold – pass, discard cards."
+
                 + "\n3. Game stages:\r\n"
                 + "\r\n"
                 + "Pre-flop\r\n"
-                + "Preflop, each player receives 2 cards face down. Then, the first round of betting begins, starting with the player sitting to the left of the player who made the big blind (this is called Under the Gun - UTG), and ending with the player sitting to the left of the big blind.\n"
+                + "\r\n"
+                + "This is the round after the players receive their pocket cards and before the first 3 community cards (flop) are dealt.\r\n"
                 + "\r\n"
                 + "Flop\r\n"
-                + "The dealer deals the first three community cards (the flop), after which the second round of betting begins with the player sitting to the left of the dealer.\n"
+                + "\r\n"
+                + "This is the first round of community cards in which 3 cards are revealed.\r\n"
                 + "\r\n"
                 + "Turn\r\n"
-                + "The dealer deals the fourth community card (the turn), followed by a third round of betting with the player sitting to the left of the dealer.\n"
+                + "\r\n"
+                + "This is the second round of community cards in which the fourth community card is revealed.\r\n"
                 + "\r\n"
                 + "River\r\n"
-                + "The dealer deals the fifth community card (the river), followed by a final round of betting.\n"
+                + "\r\n"
+                + "This is the final round of community cards in which the fifth community card is revealed.\r\n"
                 + "\r\n"
                 + "Showdown\r\n"
-                + "After the final round of betting, players reveal their cards. The player with the best combination of five cards wins. If there are several players with identical combinations, the pot is divided equally among them.\n"
                 + "\r\n"
-                + "\n");
+                + "This is the stage of revealing cards. The remaining players reveal their pocket cards and the winner is determined."
+                + " The winner is the player with the highest poker combination."
+        );
 
-        rulesText.setFont(new Font("Arial", Font.PLAIN, 20));
-        rulesText.setEditable(false);
-        rulesText.setOpaque(false);
         rulesText.setLineWrap(true);
         rulesText.setWrapStyleWord(true);
+        rulesText.setEditable(false);
 
         JScrollPane scrollPane = new JScrollPane(rulesText);
-        scrollPane.setPreferredSize(new Dimension(780, 550)); // Устанавливаем размер
+        rulesPanel.add(scrollPane, BorderLayout.CENTER);
 
         JButton backButton = new JButton("Back");
         backButton.addActionListener(e -> showStartScreen());
-
-        rulesPanel.add(scrollPane, BorderLayout.CENTER);
         rulesPanel.add(backButton, BorderLayout.SOUTH);
 
         setPanel(rulesPanel);
@@ -236,29 +276,58 @@ public class Game {
             }
         };
 
-        JTextArea combinationsText = new JTextArea("1. Straight Flush: five consecutive cards of the same suit.\n"
-                + "2. Four of a Kind: four cards of the same rank.\n"
-                + "3. Full House: three cards of the same rank and a pair.\n"
-                + "4. Flush: five cards of the same suit, not in order.\n"
-                + "5. Straight: five consecutive cards of different suits.\n"
-                + "6. Three of a Kind: three cards of the same rank.\n"
-                + "7. Two Pair: two pairs of cards of different ranks.\n"
-                + "8. One Pair: two cards of the same rank.\n"
-                + "9. High Card: the highest card when no combination is formed.\n");
+        JTextArea combinationsText = new JTextArea("Combinations in poker:\n"
 
-        combinationsText.setFont(new Font("Arial", Font.PLAIN, 20));
-        combinationsText.setEditable(false);
-        combinationsText.setOpaque(false);
+                + "\n"
+                
+                + "1. High Card: The highest card in the hand when no other combinations are formed.\n"
+        		
+                + "\n"
+                
+                + "2. One Pair: Two cards of the same rank.\n"
+
+                + "\n"
+                
+                + "3. Two Pair: Two pairs of cards of the same rank.\n"
+
+                + "\n"
+                
+                + "4. Three of a Kind: Three cards of the same rank.\n"
+
+                + "\n"
+                
+                + "5. Straight: Five consecutive cards of different suits.\n"
+
+                + "\n"
+                
+                + "6. Flush: Five cards of the same suit in any order.\n"
+
+                + "\n"
+                
+                + "7. Full House: A combination of Three of a Kind and One Pair.\n"
+
+                + "\n"
+                
+                + "8. Four of a Kind: Four cards of the same rank.\n"
+
+                + "\n"
+                
+                + "9. Straight Flush: Five consecutive cards of the same suit.\n"
+
+                + "\n"
+                
+                + "10. Royal Flush: A, K, Q, J, 10 all of the same suit."
+        );
+
         combinationsText.setLineWrap(true);
         combinationsText.setWrapStyleWord(true);
+        combinationsText.setEditable(false);
 
         JScrollPane scrollPane = new JScrollPane(combinationsText);
-        scrollPane.setPreferredSize(new Dimension(780, 550)); // Устанавливаем размер
+        combinationsPanel.add(scrollPane, BorderLayout.CENTER);
 
         JButton backButton = new JButton("Back");
         backButton.addActionListener(e -> showStartScreen());
-
-        combinationsPanel.add(scrollPane, BorderLayout.CENTER);
         combinationsPanel.add(backButton, BorderLayout.SOUTH);
 
         setPanel(combinationsPanel);
@@ -269,7 +338,7 @@ public class Game {
             frame.remove(currentPanel);
         }
         currentPanel = panel;
-        frame.add(currentPanel);
+        frame.add(currentPanel, BorderLayout.CENTER);
         frame.revalidate();
         frame.repaint();
     }
@@ -278,3 +347,4 @@ public class Game {
         SwingUtilities.invokeLater(Game::new);
     }
 }
+

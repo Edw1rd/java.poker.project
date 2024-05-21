@@ -30,4 +30,9 @@ public class Card {
     public String toString() {
         return rank.name() + " of " + suit.name();
     }
+
+	public String getImagePath() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

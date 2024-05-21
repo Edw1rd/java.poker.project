@@ -97,4 +97,9 @@ public class Table {
         Table table = new Table();
         table.startGame();
     }
+
+    public List<Card> getCommunityCards() {
+        return communityCards;
+    }
+		
 }
